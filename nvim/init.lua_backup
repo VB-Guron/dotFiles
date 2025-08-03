@@ -1,0 +1,535 @@
+-- Plugin Manager Setup (Lazy.nvim)
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+	vim.fn.system({
+		"git",
+		"clone",
+		"--filter=blob:none",
+		"https://github.com/folke/lazy.nvim.git",
+		"--branch=stable",
+		lazypath,
+	})
+end
+vim.opt.rtp:prepend(lazypath)
+
+-- Set leader key (the key you press before shortcuts)
+vim.g.mapleader = " " -- Space bar is the leader key
+
+-- These are comments (lines that don't do anything, just explain)
+-- Basic display settings
+vim.opt.number = true -- Show line numbers
+vim.opt.relativenumber = true -- Show relative line numbers
+vim.opt.mouse = "a" -- Enable mouse support (helpful for beginners)
+
+-- How tabs work
+vim.opt.tabstop = 6 -- How wide a tab appears
+vim.opt.shiftwidth = 2 -- How much to indent
+vim.opt.expandtab = false -- Use spaces instead of tabs
+
+-- Search settings
+vim.opt.ignorecase = true -- Ignore case when searching
+vim.opt.smartcase = true -- Unless you use capital letters
+
+-- Visual improvements
+vim.opt.termguicolors = true -- Better colors
+vim.opt.wrap = false -- Don't wrap long lines
+
+-- Disable netrw (default file explorer) completely
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
+-- Useful keyboard shortcuts
+vim.keymap.set("n", "<leader>w", ":w<CR>") -- Space+w to save
+vim.keymap.set("n", "<leader>q", ":q<CR>") -- Space+q to quit
+vim.keymap.set("n", "<leader>wq", ":wq<CR>") -- Space+wq to save and quit
+
+-- Better window navigation
+vim.keymap.set("n", "<C-h>", "<C-w>h") -- Ctrl+h to move left
+vim.keymap.set("n", "<C-j>", "<C-w>j") -- Ctrl+j to move down
+vim.keymap.set("n", "<C-k>", "<C-w>k") -- Ctrl+k to move up
+vim.keymap.set("n", "<C-l>", "<C-w>l") -- Ctrl+l to move right
+
+-- Stay in indent mode
+vim.keymap.set("v", "<", "<gv") -- Keep selection when unindenting
+vim.keymap.set("v", ">", ">gv") -- Keep selection when indenting
+
+-- Plugin Setup
+require("lazy").setup({
+	-- Our first plugin: a color theme
+	{
+		"catppuccin/nvim",
+		name = "catppuccin",
+		priority = 1000, -- Load this first
+		config = function()
+			require("catppuccin").setup({
+				flavour = "mocha", -- latte, frappe, macchiato, mocha
+				background = {
+					light = "latte",
+					dark = "mocha",
+				},
+				transparent_background = true,
+				show_end_of_buffer = false,
+				term_colors = false,
+				dim_inactive = {
+					enabled = false,
+					shade = "dark",
+					percentage = 0.15,
+				},
+				styles = {
+					comments = { "italic" },
+					conditionals = { "italic" },
+				},
+			})
+			vim.cmd.colorscheme("catppuccin")
+		end,
+	},
+
+	-- Yazi file manager
+	{
+		"mikavilpas/yazi.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+		},
+		event = "VeryLazy",
+		keys = {
+			{
+				"<leader>e",
+				function()
+					require("yazi").yazi()
+				end,
+				desc = "Open Yazi file manager",
+			},
+		},
+		opts = {
+			-- Prevent opening default file explorer
+			open_for_directories = false,
+
+			-- File opening behavior
+			floating_window_scaling_factor = 0.9,
+
+			-- Keymaps within yazi
+			keymaps = {
+				show_help = "<f1>",
+				open_file_in_vertical_split = "<c-v>",
+				open_file_in_horizontal_split = "<c-x>",
+				open_file_in_tab = "<c-t>",
+				grep_in_directory = "<c-s>",
+				replace_in_directory = "<c-g>",
+				cycle_open_buffers = "<tab>",
+				copy_relative_path_to_selected_files = "<c-y>",
+			},
+
+			-- Ensure files open in neovim, not default explorer
+			hooks = {
+				yazi_closed_successfully = function(chosen_file, config, state)
+					if chosen_file then
+						vim.cmd("edit " .. chosen_file)
+					end
+				end,
+			},
+		},
+	},
+
+	-- Telescope fuzzy finder
+	{
+		"nvim-telescope/telescope.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim", -- Required dependency
+		},
+		config = function()
+			local builtin = require("telescope.builtin")
+
+			-- Keyboard shortcuts for fuzzy finding
+			vim.keymap.set("n", "<leader>ff", builtin.find_files, {}) -- Find files
+			vim.keymap.set("n", "<leader>fg", builtin.live_grep, {}) -- Search in files
+			vim.keymap.set("n", "<leader>fb", builtin.buffers, {}) -- Find open files
+		end,
+	},
+
+	-- Syntax highlighting
+	{
+		"nvim-treesitter/nvim-treesitter",
+		build = ":TSUpdate", -- Automatically update parsers
+		config = function()
+			require("nvim-treesitter.configs").setup({
+				-- Install these languages automatically
+				ensure_installed = {
+					"lua", -- For your Neovim config
+					"python", -- Popular language
+					"javascript", -- JavaScript
+					"typescript", -- TypeScript
+					"tsx", -- TypeScript React (handles JSX too)
+					"html", -- Web development
+					"css", -- Web development
+					"scss", -- Sass/SCSS
+					"c_sharp", -- C# for Unity
+					"json", -- Data files
+					"yaml", -- Config files
+					"markdown", -- Documentation
+					"bash", -- Shell scripts
+				},
+
+				-- Install parsers synchronously (only applied to `ensure_installed`)
+				sync_install = false,
+
+				-- Automatically install missing parsers when entering buffer
+				auto_install = true,
+
+				highlight = {
+					enable = true, -- Enable highlighting
+					additional_vim_regex_highlighting = false,
+				},
+
+				indent = {
+					enable = true, -- Enable smart indenting
+				},
+			})
+		end,
+	},
+
+	-- Auto-completion
+	{
+		"hrsh7th/nvim-cmp",
+		dependencies = {
+			"hrsh7th/cmp-nvim-lsp", -- LSP completions
+			"hrsh7th/cmp-buffer", -- Buffer completions
+			"hrsh7th/cmp-path", -- File path completions
+			"hrsh7th/cmp-cmdline", -- Command line completions
+			"L3MON4D3/LuaSnip", -- Snippet engine
+			"saadparwaiz1/cmp_luasnip", -- Snippet completions
+		},
+		config = function()
+			local cmp = require("cmp")
+			local luasnip = require("luasnip")
+
+			cmp.setup({
+				snippet = {
+					expand = function(args)
+						luasnip.lsp_expand(args.body)
+					end,
+				},
+
+				mapping = cmp.mapping.preset.insert({
+					["<C-d>"] = cmp.mapping.scroll_docs(-4),
+					["<C-f>"] = cmp.mapping.scroll_docs(4),
+					["<C-Space>"] = cmp.mapping.complete(),
+					["<C-e>"] = cmp.mapping.close(),
+					["<CR>"] = cmp.mapping.confirm({
+						behavior = cmp.ConfirmBehavior.Replace,
+						select = true,
+					}),
+					["<Tab>"] = cmp.mapping(function(fallback)
+						if cmp.visible() then
+							cmp.select_next_item()
+						elseif luasnip.expand_or_jumpable() then
+							luasnip.expand_or_jump()
+						else
+							fallback()
+						end
+					end, { "i", "s" }),
+					["<S-Tab>"] = cmp.mapping(function(fallback)
+						if cmp.visible() then
+							cmp.select_prev_item()
+						elseif luasnip.jumpable(-1) then
+							luasnip.jump(-1)
+						else
+							fallback()
+						end
+					end, { "i", "s" }),
+				}),
+
+				sources = cmp.config.sources({
+					{ name = "nvim_lsp" },
+					{ name = "luasnip" },
+					{ name = "buffer" },
+					{ name = "path" },
+				}),
+			})
+		end,
+	},
+
+	-- Status line
+	{
+		"nvim-lualine/lualine.nvim",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		config = function()
+			require("lualine").setup({
+				options = {
+					theme = "auto", -- Matches your color scheme
+					component_separators = { left = "", right = "" },
+					section_separators = { left = "", right = "" },
+					disabled_filetypes = {
+						statusline = {},
+						winbar = {},
+					},
+				},
+				sections = {
+					lualine_a = { "mode" }, -- Shows INSERT, NORMAL, etc.
+					lualine_b = { "branch", "diff", "diagnostics" },
+					lualine_c = { "filename" }, -- Current file name
+					lualine_x = { "encoding", "fileformat", "filetype" },
+					lualine_y = { "progress" }, -- How far through the file
+					lualine_z = { "location" }, -- Line and column number
+				},
+			})
+		end,
+	},
+
+	-- LSP Support for intelligent code suggestions
+	{
+		"neovim/nvim-lspconfig",
+		dependencies = {
+			-- LSP installer - automatically installs language servers
+			"williamboman/mason.nvim",
+			"williamboman/mason-lspconfig.nvim",
+
+			-- Additional lua configuration for nvim
+			"folke/neodev.nvim",
+		},
+		config = function()
+			-- Setup neodev for better nvim lua experience
+			require("neodev").setup()
+
+			-- Setup mason (LSP installer)
+			require("mason").setup({
+				ui = {
+					icons = {
+						package_installed = "✓",
+						package_pending = "➜",
+						package_uninstalled = "✗",
+					},
+				},
+			})
+
+			-- Setup mason-lspconfig (bridge between mason and lspconfig)
+			require("mason-lspconfig").setup({
+				-- Automatically install these language servers
+				ensure_installed = {
+					"lua_ls", -- Lua
+					"ts_ls", -- TypeScript/JavaScript (updated from tsserver)
+					"cssls", -- CSS
+					"html", -- HTML
+					"tailwindcss", -- Tailwind CSS
+					"omnisharp", -- C# (for Unity)
+					"jsonls", -- JSON
+				},
+				automatic_installation = true,
+			})
+
+			local lspconfig = require("lspconfig")
+			local capabilities = require("cmp_nvim_lsp").default_capabilities()
+
+			-- Function to setup common keybindings for LSP
+			local on_attach = function(client, bufnr)
+				local opts = { buffer = bufnr, silent = true }
+
+				-- LSP keybindings
+				vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts) -- Go to definition
+				vim.keymap.set("n", "gr", vim.lsp.buf.references, opts) -- Find references
+				vim.keymap.set("n", "K", vim.lsp.buf.hover, opts) -- Show hover info
+				vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts) -- Code actions
+				vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts) -- Rename symbol
+				vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts) -- Previous diagnostic
+				vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts) -- Next diagnostic
+				vim.keymap.set("i", "<C-h>", vim.lsp.buf.signature_help, opts) -- Signature help
+			end
+
+			-- Configure individual language servers
+
+			-- Lua LSP
+			lspconfig.lua_ls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				settings = {
+					Lua = {
+						telemetry = { enable = false },
+						workspace = { checkThirdParty = false },
+					},
+				},
+			})
+
+			-- TypeScript/JavaScript LSP
+			lspconfig.ts_ls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
+			})
+
+			-- CSS LSP
+			lspconfig.cssls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			-- HTML LSP
+			lspconfig.html.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			-- Tailwind CSS LSP
+			lspconfig.tailwindcss.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				filetypes = {
+					"html",
+					"css",
+					"scss",
+					"javascript",
+					"javascriptreact",
+					"typescript",
+					"typescriptreact",
+					"vue",
+				},
+			})
+
+			-- C# LSP (OmniSharp for Unity)
+			lspconfig.omnisharp.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				cmd = { "omnisharp", "--languageserver", "--hostPID", tostring(vim.fn.getpid()) },
+				settings = {
+					FormattingOptions = {
+						EnableEditorConfigSupport = true,
+						OrganizeImports = nil,
+					},
+					MsBuild = {
+						LoadProjectsOnDemand = nil,
+					},
+					RoslynExtensionsOptions = {
+						EnableAnalyzersSupport = nil,
+						EnableImportCompletion = nil,
+					},
+				},
+			})
+
+			-- JSON LSP
+			lspconfig.jsonls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			-- Configure diagnostics display
+			vim.diagnostic.config({
+				virtual_text = true,
+				signs = true,
+				update_in_insert = false,
+				underline = true,
+				severity_sort = true,
+				float = {
+					focusable = false,
+					style = "minimal",
+					border = "rounded",
+					source = "always",
+					header = "",
+					prefix = "",
+				},
+			})
+
+			-- Diagnostic signs
+			local signs = { Error = " ", Warn = " ", Hint = " ", Info = " " }
+			for type, icon in pairs(signs) do
+				local hl = "DiagnosticSign" .. type
+				vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+			end
+		end,
+	},
+
+	-- Prettier formatting with conform.nvim
+	{
+		"stevearc/conform.nvim",
+		event = { "BufWritePre" },
+		cmd = { "ConformInfo" },
+		keys = {
+			{
+				"<leader>f",
+				function()
+					require("conform").format({ async = true, lsp_fallback = true })
+				end,
+				mode = "",
+				desc = "Format buffer",
+			},
+		},
+		opts = {
+			-- Define formatters for each filetype
+			formatters_by_ft = {
+				lua = { "stylua" },
+				javascript = { "prettier" },
+				typescript = { "prettier" },
+				javascriptreact = { "prettier" },
+				typescriptreact = { "prettier" },
+				vue = { "prettier" },
+				css = { "prettier" },
+				scss = { "prettier" },
+				less = { "prettier" },
+				html = { "prettier" },
+				json = { "prettier" },
+				jsonc = { "prettier" },
+				yaml = { "prettier" },
+				markdown = { "prettier" },
+				graphql = { "prettier" },
+				cs = { "csharpier" }, -- C# formatting
+			},
+
+			-- Format on save configuration with disable flags support
+			format_on_save = function(bufnr)
+				-- Disable with a global or buffer-local variable
+				if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+					return
+				end
+				return { timeout_ms = 3000, lsp_fallback = true }
+			end,
+
+			-- Prettier configuration
+			formatters = {
+				prettier = {
+					-- You can customize prettier options here
+					prepend_args = { "--single-quote", "--jsx-single-quote" },
+				},
+			},
+		},
+	},
+})
+
+-- Additional keymaps for formatting (after the plugin setup)
+
+-- Format selection in visual mode (the plugin already handles <leader>f for normal mode)
+vim.keymap.set("v", "<leader>f", function()
+	require("conform").format({
+		async = true,
+		lsp_fallback = true,
+		timeout_ms = 5000, -- 5 second timeout for manual formatting
+	})
+end, { desc = "Format selection" })
+
+-- Toggle format on save
+vim.keymap.set("n", "<leader>tf", function()
+	if vim.g.disable_autoformat then
+		vim.g.disable_autoformat = false
+		print("Format on save enabled")
+	else
+		vim.g.disable_autoformat = true
+		print("Format on save disabled")
+	end
+end, { desc = "Toggle format on save" })
+
+-- Commands to disable/enable formatting
+vim.api.nvim_create_user_command("FormatDisable", function(args)
+	if args.bang then
+		-- FormatDisable! will disable formatting globally
+		vim.g.disable_autoformat = true
+	else
+		-- FormatDisable will disable formatting for current buffer
+		vim.b.disable_autoformat = true
+	end
+end, {
+	desc = "Disable autoformat-on-save",
+	bang = true,
+})
+
+vim.api.nvim_create_user_command("FormatEnable", function()
+	vim.b.disable_autoformat = false
+	vim.g.disable_autoformat = false
+end, {
+	desc = "Re-enable autoformat-on-save",
+})
